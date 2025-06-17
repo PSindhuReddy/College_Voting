@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Voting App</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="app">
+    <h1>Welcome to the Voting App</h1>
+    <!-- Login Section -->
+    <div id="login-section">
+      <input type="text" id="username" placeholder="Username">
+      <input type="password" id="password" placeholder="Password">
+      <button id="login-btn">Login</button>
+      <button id="register-btn">Register</button>
+    </div>
+
+    <!-- Voting Section -->
+    <div id="voting-section" class="hidden">
+      <h2>Voting Panel</h2>
+      <p id="voting-message"></p>
+      <ul id="candidates-list"></ul>
+    </div>
+
+    <!-- Admin Section -->
+    <div id="admin-section" class="hidden">
+      <h2>Admin Panel</h2>
+      <p>Vote Counts:</p>
+      <pre id="results">Results will be displayed here.</pre>
+      <button id="refresh-results-btn">Refresh Results</button>
+      <button id="reset-results-btn">Reset Results</button>
+    </div>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>

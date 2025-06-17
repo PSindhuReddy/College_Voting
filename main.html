@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Voting System Dashboard</title>
+  <link rel="stylesheet" href="abc.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <style>
+    /* ... (previous styles remain the same) ... */
+    .main-content .card-view { background: white; border-radius: 8px; padding: 25px; margin-bottom: 20px; box-shadow: 0 4px 8px rgba(0,0,0,0.05); }
+    #candidates-list li, #admin-candidates-list li, #admin-users-list li, #admin-allowed-voters-list li { /* Added #admin-allowed-voters-list */
+      margin-bottom: 10px; padding: 10px; border: 1px solid #eee; border-radius: 4px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    #candidates-list button { width: 100%; text-align: left; padding: 15px; font-size: 18px; border: 1px solid #ddd; background: white; border-radius: 5px; cursor: pointer; transition: all 0.2s; }
+    #candidates-list button:hover { background: #f9f9f9; border-color: #3498db; transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+    #results-display-area, #voter-results-area { white-space: pre-line; background: #f9f9f9; padding: 15px; border-radius: 5px; border-left: 4px solid #3498db; font-family: monospace; margin-top: 20px; font-size: 16px; }
+    .form-group { margin-bottom: 15px; }
+    .form-group label { display: block; font-weight: bold; margin-bottom: 5px; color: #333; }
+    .form-group input[type="text"], .form-group input[type="password"], .form-group input[type="file"] { /* Added file input */
+      width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 16px;
+    }
+    .form-group input[type="file"] { padding: 7px; } /* Slightly less padding for file input */
+    .button-group { margin-top: 15px; }
+    .admin-section-divider { border-top: 1px solid #eee; margin-top: 30px; padding-top: 20px; }
+    .admin-section-divider h3, .admin-section-divider h4 { margin-bottom: 15px; color: #2c3e50; }
+    #admin-candidates-list .remove-candidate-btn, #admin-users-list .remove-user-btn { margin-left: 10px; }
+    #election-status-display { font-weight: bold; padding: 10px; border-radius: 4px; margin-bottom: 15px; text-align: center; }
+    .status-not-started { background-color: #e9ecef; color: #495057; }
+    .status-active { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+    .status-ended { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+    .election-controls button { margin-right: 10px; }
+    .user-info-item { flex-grow: 1; }
+    .user-voted-status { font-style: italic; color: #555; margin-left: 15px; }
+    .status-voted { color: green; }
+    .status-not-voted { color: orange; }
+    #admin-allowed-voters-list { max-height: 200px; overflow-y: auto; background-color: #f9f9f9; padding: 10px; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <div class="dashboard-container">
+    <!-- Sidebar, Mobile Toggle (same) -->
+    <aside class="sidebar"> <div class="sidebar-header"><h2>Voting App</h2><span class="app-version">v1.0</span></div> <ul class="sidebar-menu" id="sidebar-menu"></ul> <div class="user-info-sidebar hidden" id="user-info-sidebar"> <div class="user-avatar" id="user-avatar-initial"></div> <div class="user-details"> <span class="user-name" id="sidebar-user-name">Guest</span> <span class="user-role" id="sidebar-user-role"></span> </div> <i class="fas fa-sign-out-alt logout-icon" id="sidebar-logout-btn" title="Logout"></i> </div> </aside> <div class="mobile-toggle" id="mobile-toggle-btn"><i class="fas fa-bars"></i></div>
+
+    <main class="main-content">
+      <header class="dashboard-header"><h1 class="dashboard-title" id="dashboard-title">Welcome</h1></header>
+
+      <div id="login-view" class="form-panel card-view">
+        <div class="form-group"><label for="username">Username (e.g., Student ID):</label><input type="text" id="username" placeholder="Enter your username"></div>
+        <div class="form-group"><label for="password">Password:</label><input type="password" id="password" placeholder="Enter your password"></div>
+        <div class="button-group"><button id="login-btn" class="btn btn-primary">Login</button><button id="register-btn" class="btn btn-outline">Register</button></div>
+      </div>
+
+      <div id="admin-view" class="data-panel card-view hidden">
+        <!-- Election Management (same) -->
+        <div class="admin-section-divider"> <h3>Election Management</h3> <div id="election-status-display">Current Status: Loading...</div> <div class="button-group election-controls"> <button id="start-election-btn" class="btn btn-success">Start Election</button> <button id="end-election-btn" class="btn btn-danger">End Election</button> <button id="reset-election-btn" class="btn btn-warning">Reset Election</button> </div> <p class="text-muted small mt-2">Resetting election clears votes, voted users, and sets status to 'Not Started'. Candidates remain.</p> </div>
+        
+        <!-- Allowed Voters Management (NEW SECTION) -->
+        <div class="admin-section-divider">
+            <h3>Allowed Voters Management</h3>
+            <p>Import a CSV file containing a single column of allowed usernames (e.g., Student IDs). Users must be on this list to register.</p>
+            <div class="form-group">
+                <label for="allowed-voters-file">Upload CSV File:</label>
+                <input type="file" id="allowed-voters-file" accept=".csv">
+            </div>
+            <button id="import-voters-btn" class="btn btn-primary">Import Allowed Voters</button>
+            <button id="clear-allowed-voters-btn" class="btn btn-danger btn-sm">Clear Allowed Voters List</button>
+            
+            <h4>Currently Allowed Voters (<span id="allowed-voters-count">0</span>):</h4>
+            <ul id="admin-allowed-voters-list">
+                <!-- List of allowed voters will be shown here -->
+            </ul>
+        </div>
+
+        <!-- Candidate Management (same) -->
+        <div class="admin-section-divider"> <h3>Candidate Management</h3> <p>Add or remove candidates before starting an election. Candidates cannot be changed once an election is active.</p> <div id="candidate-management-section"> <div class="form-group"><label for="new-candidate-name">Candidate Name:</label><input type="text" id="new-candidate-name" placeholder="Enter candidate name"></div> <button id="add-candidate-btn" class="btn btn-success">Add Candidate</button> <h4>Current Candidates:</h4><ul id="admin-candidates-list"></ul> <div class="button-group" id="admin-candidate-controls"><button id="clear-all-candidates-btn" class="btn btn-danger btn-sm">Clear All Candidates</button></div> </div> </div>
+
+        <!-- User Management & Participation (same) -->
+        <div class="admin-section-divider"> <h3>User Management & Participation</h3> <p>View registered users and their voting status. Admin users cannot be removed here.</p> <ul id="admin-users-list"></ul> </div>
+
+        <!-- Voting Results (same) -->
+        <div class="admin-section-divider"> <h3>Voting Results</h3> <p>View candidate vote counts:</p> <div id="results-display-area">Results will appear here...</div> <div class="button-group"><button id="refresh-results-btn" class="btn btn-primary">Refresh Results</button></div> </div>
+      </div>
+
+      <div id="voting-view" class="data-panel card-view hidden">
+        <p id="voting-message">Loading election status...</p> <ul id="candidates-list"></ul> <div id="voter-results-area" class="hidden"></div>
+      </div>
+      
+      <div id="dashboard-home-view" class="data-panel card-view hidden">
+          <h2>Dashboard Overview</h2> <p>Welcome to the Secure Voting System. Use the sidebar to navigate.</p> <div id="election-status-info-home" class="mb-20"></div>
+          <div class="dashboard-cards">
+            <div class="stat-card"><div class="stat-card-header"><span class="stat-card-title">Total Votes Cast</span><div class="stat-card-icon icon-blue"><i class="fas fa-poll"></i></div></div><div class="stat-card-value" id="stat-total-votes">0</div><p class="stat-card-description">In current/last election</p></div>
+            <div class="stat-card"><div class="stat-card-header"><span class="stat-card-title">Registered Users</span><div class="stat-card-icon icon-green"><i class="fas fa-users"></i></div></div><div class="stat-card-value" id="stat-total-users">0</div><p class="stat-card-description">Total users in the system</p></div>
+            <div class="stat-card"><div class="stat-card-header"><span class="stat-card-title">Allowed Voters</span><div class="stat-card-icon icon-purple"><i class="fas fa-user-check"></i></div></div><div class="stat-card-value" id="stat-total-allowed-voters">0</div><p class="stat-card-description">Eligible to register</p></div>
+            <div class="stat-card"><div class="stat-card-header"><span class="stat-card-title">Configured Candidates</span><div class="stat-card-icon icon-orange"><i class="fas fa-user-tie"></i></div></div><div class="stat-card-value" id="stat-total-candidates">0</div><p class="stat-card-description">For the current/next election</p></div>
+          </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    // --- DATA INITIALIZATION ---
+    const ELECTION_STATUS = { NOT_STARTED: 'not_started', ACTIVE: 'active', ENDED: 'ended' };
+    if (!localStorage.getItem('users')) localStorage.setItem('users', JSON.stringify([{ username: 'admin', password: 'admin123', role: 'admin' }]));
+    if (!localStorage.getItem('votes')) localStorage.setItem('votes', JSON.stringify({}));
+    if (!localStorage.getItem('votedUsers')) localStorage.setItem('votedUsers', JSON.stringify([]));
+    if (!localStorage.getItem('electionCandidates')) localStorage.setItem('electionCandidates', JSON.stringify([]));
+    if (!localStorage.getItem('electionStatus')) localStorage.setItem('electionStatus', ELECTION_STATUS.NOT_STARTED);
+    // NEW: Initialize allowed voters list
+    if (!localStorage.getItem('allowedVotersList')) {
+      localStorage.setItem('allowedVotersList', JSON.stringify([]));
+    }
+
+    let loggedInUser = null;
+    const views = ['login-view', 'admin-view', 'voting-view', 'dashboard-home-view'];
+
+    // --- DOM ELEMENTS ---
+    // (Most are same, adding new ones for allowed voters)
+    const sidebarMenu = document.getElementById('sidebar-menu'); /* ... other common elements ... */
+    const usernameInput = document.getElementById('username');
+    const passwordInput = document.getElementById('password');
+    const loginBtn = document.getElementById('login-btn');
+    const registerBtn = document.getElementById('register-btn');
+
+    const electionStatusDisplay = document.getElementById('election-status-display');
+    const startElectionBtn = document.getElementById('start-election-btn');
+    const endElectionBtn = document.getElementById('end-election-btn');
+    const resetElectionBtn = document.getElementById('reset-election-btn');
+    
+    const allowedVotersFileInput = document.getElementById('allowed-voters-file'); // NEW
+    const importVotersBtn = document.getElementById('import-voters-btn'); // NEW
+    const clearAllowedVotersBtn = document.getElementById('clear-allowed-voters-btn'); // NEW
+    const adminAllowedVotersList = document.getElementById('admin-allowed-voters-list'); // NEW
+    const allowedVotersCountDisplay = document.getElementById('allowed-voters-count'); // NEW
+
+    const candidateManagementSection = document.getElementById('candidate-management-section');
+    const newCandidateNameInput = document.getElementById('new-candidate-name');
+    const addCandidateBtn = document.getElementById('add-candidate-btn');
+    const adminCandidatesList = document.getElementById('admin-candidates-list');
+    const clearAllCandidatesBtn = document.getElementById('clear-all-candidates-btn');
+    
+    const adminUsersList = document.getElementById('admin-users-list');
+    const resultsDisplayArea = document.getElementById('results-display-area');
+    const refreshResultsBtn = document.getElementById('refresh-results-btn');
+    
+    const votingMessage = document.getElementById('voting-message');
+    const candidatesList = document.getElementById('candidates-list');
+    const voterResultsArea = document.getElementById('voter-results-area');
+    
+    const electionStatusInfoHome = document.getElementById('election-status-info-home');
+    const statTotalVotes = document.getElementById('stat-total-votes');
+    const statTotalUsers = document.getElementById('stat-total-users');
+    const statTotalAllowedVoters = document.getElementById('stat-total-allowed-voters'); // NEW
+    const statTotalCandidates = document.getElementById('stat-total-candidates');
+    
+    const mobileToggleBtn = document.getElementById('mobile-toggle-btn');
+    const sidebar = document.querySelector('.sidebar');
+    // ... (ensure all other previously defined DOM elements are here)
+    const userInfoSidebar = document.getElementById('user-info-sidebar');
+    const sidebarUserName = document.getElementById('sidebar-user-name');
+    const sidebarUserRole = document.getElementById('sidebar-user-role');
+    const userAvatarInitial = document.getElementById('user-avatar-initial');
+    const sidebarLogoutBtn = document.getElementById('sidebar-logout-btn');
+    const dashboardTitle = document.getElementById('dashboard-title');
+    const adminCandidateControls = document.getElementById('admin-candidate-controls');
+
+
+
+    // --- INITIALIZATION ---
+    document.addEventListener('DOMContentLoaded', () => {
+      const savedUser = sessionStorage.getItem('loggedInUser');
+      if (savedUser) loggedInUser = JSON.parse(savedUser);
+      renderApp();
+      // Event listeners
+      loginBtn.addEventListener('click', login);
+      registerBtn.addEventListener('click', register);
+      sidebarLogoutBtn.addEventListener('click', logout);
+      if(refreshResultsBtn) refreshResultsBtn.addEventListener('click', refreshResults);
+      if(startElectionBtn) startElectionBtn.addEventListener('click', handleStartElection);
+      if(endElectionBtn) endElectionBtn.addEventListener('click', handleEndElection);
+      if(resetElectionBtn) resetElectionBtn.addEventListener('click', handleResetElection);
+      if(addCandidateBtn) addCandidateBtn.addEventListener('click', handleAddCandidate);
+      if(clearAllCandidatesBtn) clearAllCandidatesBtn.addEventListener('click', handleClearAllCandidates);
+      // NEW: Allowed voters event listeners
+      if(importVotersBtn) importVotersBtn.addEventListener('click', handleImportAllowedVoters);
+      if(clearAllowedVotersBtn) clearAllowedVotersBtn.addEventListener('click', handleClearAllowedVotersList);
+      
+      mobileToggleBtn.addEventListener('click', () => sidebar.classList.toggle('show'));
+    });
+    
+    // --- ELECTION STATUS & UI (same) ---
+    function updateElectionStatusDisplay() { /* ... same as before ... */ const currentStatus = localStorage.getItem('electionStatus'); let statusText = "Unknown", statusClass = ""; switch(currentStatus) { case ELECTION_STATUS.NOT_STARTED: statusText = "Election Not Started"; statusClass = "status-not-started"; if (startElectionBtn) startElectionBtn.disabled = false; if (endElectionBtn) endElectionBtn.disabled = true; if (resetElectionBtn) resetElectionBtn.disabled = false; if (candidateManagementSection) candidateManagementSection.style.opacity = "1"; if (addCandidateBtn) addCandidateBtn.disabled = false; if (clearAllCandidatesBtn) clearAllCandidatesBtn.disabled = false; adminCandidatesList.querySelectorAll('.remove-candidate-btn').forEach(btn => btn.disabled = false); break; case ELECTION_STATUS.ACTIVE: statusText = "Election Active - Voting in Progress"; statusClass = "status-active"; if (startElectionBtn) startElectionBtn.disabled = true; if (endElectionBtn) endElectionBtn.disabled = false; if (resetElectionBtn) resetElectionBtn.disabled = true;  if (candidateManagementSection) candidateManagementSection.style.opacity = "0.5"; if (addCandidateBtn) addCandidateBtn.disabled = true; if (clearAllCandidatesBtn) clearAllCandidatesBtn.disabled = true; adminCandidatesList.querySelectorAll('.remove-candidate-btn').forEach(btn => btn.disabled = true); break; case ELECTION_STATUS.ENDED: statusText = "Election Ended - Results Available"; statusClass = "status-ended"; if (startElectionBtn) startElectionBtn.disabled = true; if (endElectionBtn) endElectionBtn.disabled = true; if (resetElectionBtn) resetElectionBtn.disabled = false;  if (candidateManagementSection) candidateManagementSection.style.opacity = "0.5"; if (addCandidateBtn) addCandidateBtn.disabled = true; if (clearAllCandidatesBtn) clearAllCandidatesBtn.disabled = true; adminCandidatesList.querySelectorAll('.remove-candidate-btn').forEach(btn => btn.disabled = true); break; } if (electionStatusDisplay) { electionStatusDisplay.textContent = `Current Status: ${statusText}`; electionStatusDisplay.className = `alert ${statusClass}`; } if (electionStatusInfoHome) { electionStatusInfoHome.innerHTML = `<div class="alert ${statusClass} text-center">Election Status: ${statusText}</div>`; } }
+
+    // --- VIEW, APP RENDER, MENU ---
+    function showView(viewId, title) { /* ... same ... */ views.forEach(id => document.getElementById(id)?.classList.add('hidden')); const activeView = document.getElementById(viewId); if (activeView) { activeView.classList.remove('hidden'); activeView.classList.add('fade-in'); } dashboardTitle.textContent = title || 'Voting System'; sidebar.classList.remove('show');  }
+    function renderApp() { /* ... In admin role check, add renderAllowedVotersAdminList() ... */ 
+        sidebarMenu.innerHTML = ''; 
+        if (loggedInUser) {
+            userInfoSidebar.classList.remove('hidden');
+            sidebarUserName.textContent = loggedInUser.username;
+            sidebarUserRole.textContent = loggedInUser.role.charAt(0).toUpperCase() + loggedInUser.role.slice(1);
+            userAvatarInitial.textContent = loggedInUser.username.charAt(0).toUpperCase();
+            addMenuItem('Dashboard Home', () => { showView('dashboard-home-view', 'Dashboard Home'); updateDashboardStats(); updateElectionStatusDisplay(); }, 'fas fa-tachometer-alt');
+            if (loggedInUser.role === 'admin') {
+                addMenuItem('Manage System', () => { 
+                    showView('admin-view', 'Admin Control Panel');
+                    refreshResults(); 
+                    renderAdminCandidatesList();
+                    renderAdminUserList(); 
+                    renderAllowedVotersAdminList(); // NEW
+                    updateElectionStatusDisplay();  
+                }, 'fas fa-cogs');
+            } else if (loggedInUser.role === 'voter') {
+                addMenuItem('Vote / View Results', () => { showView('voting-view', 'Voting Panel'); setupVotingPanel(); }, 'fas fa-vote-yea');
+            }
+            document.getElementById('login-view').classList.add('hidden');
+            if (!document.querySelector('.main-content .card-view:not(.hidden)')) {
+                showView('dashboard-home-view', 'Dashboard Home');
+                updateDashboardStats(); updateElectionStatusDisplay();
+            }
+        } else { 
+            userInfoSidebar.classList.add('hidden');
+            addMenuItem('Login / Register', () => showView('login-view', 'Login or Register'), 'fas fa-sign-in-alt');
+            showView('login-view', 'Login or Register');
+        }
+        const firstActiveMenu = sidebarMenu.querySelector('a');
+        if (firstActiveMenu) { document.querySelectorAll('.sidebar-menu a').forEach(link => link.classList.remove('active')); firstActiveMenu.classList.add('active'); }
+    }
+    function addMenuItem(text, action, iconClass = 'fas fa-question-circle') { /* ... same ... */ const li = document.createElement('li'); const a = document.createElement('a'); a.href = '#'; a.innerHTML = `<i class="${iconClass}"></i> <span class="menu-text">${text}</span>`; a.addEventListener('click', (e) => { e.preventDefault(); document.querySelectorAll('.sidebar-menu a').forEach(link => link.classList.remove('active')); a.classList.add('active'); action(); }); li.appendChild(a); sidebarMenu.appendChild(li); }
+    
+    function updateDashboardStats() {
+        statTotalVotes.textContent = (JSON.parse(localStorage.getItem('votedUsers')) || []).length;
+        statTotalUsers.textContent = (JSON.parse(localStorage.getItem('users')) || []).length;
+        statTotalCandidates.textContent = (JSON.parse(localStorage.getItem('electionCandidates')) || []).length;
+        statTotalAllowedVoters.textContent = (JSON.parse(localStorage.getItem('allowedVotersList')) || []).length; // NEW
+    }
+
+    // --- AUTHENTICATION (MODIFIED register function) ---
+    function register() {
+      const username = usernameInput.value.trim();
+      const password = passwordInput.value;
+
+      if (!username || !password) return showAlert('Please fill in both fields!', 'error');
+      if (username.length < 3) return showAlert('Username must be at least 3 characters long (e.g., your Student ID).', 'error');
+      if (password.length < 6) return showAlert('Password must be at least 6 characters long.', 'error');
+
+      // NEW: Check against allowed voters list
+      const allowedVoters = JSON.parse(localStorage.getItem('allowedVotersList')) || [];
+      if (allowedVoters.length > 0 && !allowedVoters.includes(username)) { // Only check if list is populated
+          showAlert('Registration failed. Your username (e.g., Student ID) is not on the list of eligible voters. Please contact an administrator.', 'error');
+          return;
+      }
+
+      const users = JSON.parse(localStorage.getItem('users'));
+      if (users.find(user => user.username === username)) {
+        showAlert('Username already exists. Please log in or choose a different username if you made a mistake.', 'error');
+      } else {
+        users.push({ username, password, role: 'voter' });
+        localStorage.setItem('users', JSON.stringify(users));
+        showAlert('Registration successful! Please log in.', 'success');
+        usernameInput.value = '';
+        passwordInput.value = '';
+        updateDashboardStats();
+      }
+    }
+    function login() { /* ... same ... */ const username = usernameInput.value.trim(); const password = passwordInput.value; if (!username || !password) return showAlert('Please fill in both fields!', 'error'); const users = JSON.parse(localStorage.getItem('users')); const foundUser = users.find(user => user.username === username && user.password === password); if (foundUser) { loggedInUser = foundUser; sessionStorage.setItem('loggedInUser', JSON.stringify(loggedInUser)); showAlert(`Welcome, ${loggedInUser.username}!`, 'success'); usernameInput.value = ''; passwordInput.value = ''; renderApp(); } else { showAlert('Invalid credentials!', 'error'); } }
+    function logout() { /* ... same ... */ sessionStorage.removeItem('loggedInUser'); loggedInUser = null; showAlert('You have been logged out.', 'info'); renderApp();  }
+
+    // --- ADMIN ELECTION LIFECYCLE (same) ---
+    function handleStartElection() { /* ... same ... */ const candidates = JSON.parse(localStorage.getItem('electionCandidates')) || []; if (candidates.length === 0) return showAlert('Cannot start election. Please add at least one candidate.', 'error'); if (confirm('Are you sure you want to START the election? Candidates cannot be changed once started.')) { localStorage.setItem('electionStatus', ELECTION_STATUS.ACTIVE); showAlert('Election started! Voting is now open.', 'success'); localStorage.setItem('votes', JSON.stringify({})); localStorage.setItem('votedUsers', JSON.stringify([])); refreshResults(); updateDashboardStats(); updateElectionStatusDisplay(); renderAdminUserList(); } }
+    function handleEndElection() { /* ... same ... */ if (confirm('Are you sure you want to END the election? Voting will be closed.')) { localStorage.setItem('electionStatus', ELECTION_STATUS.ENDED); showAlert('Election ended! Voting is closed. Final results are available.', 'success'); updateElectionStatusDisplay(); renderAdminUserList(); } }
+    function handleResetElection() { /* ... same ... */ if (confirm('Are you sure you want to RESET the election? This will clear all votes, mark users as not voted, and set election status to "Not Started". Candidates and Allowed Voters List will remain. This action cannot be undone.')) { localStorage.setItem('votes', JSON.stringify({})); localStorage.setItem('votedUsers', JSON.stringify([])); localStorage.setItem('electionStatus', ELECTION_STATUS.NOT_STARTED); showAlert('Election has been reset.', 'info'); updateElectionStatusDisplay(); refreshResults(); updateDashboardStats(); renderAdminUserList(); } }
+    
+    // --- ADMIN CANDIDATE MANAGEMENT (same) ---
+    function renderAdminCandidatesList() { /* ... same ... */ if (!adminCandidatesList) return; adminCandidatesList.innerHTML = ''; const candidates = JSON.parse(localStorage.getItem('electionCandidates')) || []; if (candidates.length === 0) { adminCandidatesList.innerHTML = '<li>No candidates configured yet.</li>'; adminCandidateControls.classList.add('hidden'); return; } adminCandidateControls.classList.remove('hidden'); candidates.forEach(candidateName => { const li = document.createElement('li'); li.textContent = candidateName; const removeBtn = document.createElement('button'); removeBtn.innerHTML = '<i class="fas fa-trash-alt"></i> Remove'; removeBtn.className = 'btn btn-danger btn-sm remove-candidate-btn'; removeBtn.onclick = () => handleRemoveCandidate(candidateName); li.appendChild(removeBtn); adminCandidatesList.appendChild(li); }); updateElectionStatusDisplay(); }
+    function handleAddCandidate() { /* ... same ... */ if (localStorage.getItem('electionStatus') !== ELECTION_STATUS.NOT_STARTED) return showAlert('Cannot add candidates now. Reset election first.', 'warning'); const name = newCandidateNameInput.value.trim(); if (!name) return showAlert('Candidate name cannot be empty.', 'error'); const candidates = JSON.parse(localStorage.getItem('electionCandidates')) || []; if (candidates.includes(name)) return showAlert('This candidate already exists.', 'error'); candidates.push(name); localStorage.setItem('electionCandidates', JSON.stringify(candidates)); showAlert(`Candidate "${name}" added.`, 'success'); newCandidateNameInput.value = ''; renderAdminCandidatesList(); updateDashboardStats(); }
+    function handleRemoveCandidate(candidateNameToRemove) { /* ... same ... */ if (localStorage.getItem('electionStatus') !== ELECTION_STATUS.NOT_STARTED) return showAlert('Cannot remove candidates now. Reset election first.', 'warning'); if (!confirm(`Remove candidate "${candidateNameToRemove}"?`)) return; let candidates = JSON.parse(localStorage.getItem('electionCandidates')) || []; candidates = candidates.filter(name => name !== candidateNameToRemove); localStorage.setItem('electionCandidates', JSON.stringify(candidates)); showAlert(`Candidate "${candidateNameToRemove}" removed.`, 'info'); renderAdminCandidatesList(); updateDashboardStats(); }
+    function handleClearAllCandidates() { /* ... same ... */  if (localStorage.getItem('electionStatus') !== ELECTION_STATUS.NOT_STARTED) return showAlert('Cannot clear candidates now. Reset election first.', 'warning'); if (!confirm('Clear ALL candidates?')) return; localStorage.setItem('electionCandidates', JSON.stringify([])); showAlert('All candidates cleared.', 'success'); renderAdminCandidatesList(); updateDashboardStats(); }
+
+    // --- ADMIN USER MANAGEMENT (same) ---
+    function renderAdminUserList() { /* ... same ... */ if (!adminUsersList) return; adminUsersList.innerHTML = ''; const users = JSON.parse(localStorage.getItem('users')) || []; const votedUsernames = JSON.parse(localStorage.getItem('votedUsers')) || []; if (users.length === 0) { adminUsersList.innerHTML = '<li>No users registered yet.</li>'; return; } users.forEach(user => { const li = document.createElement('li'); const userInfo = document.createElement('span'); userInfo.className = 'user-info-item'; userInfo.textContent = `${user.username} (${user.role})`; const votedStatus = document.createElement('span'); votedStatus.className = 'user-voted-status'; if (votedUsernames.includes(user.username)) { votedStatus.textContent = 'Voted'; votedStatus.classList.add('status-voted'); } else { votedStatus.textContent = 'Not Voted'; votedStatus.classList.add('status-not-voted'); } userInfo.appendChild(votedStatus); li.appendChild(userInfo); if (user.role !== 'admin' && user.username !== loggedInUser.username) { const removeBtn = document.createElement('button'); removeBtn.innerHTML = '<i class="fas fa-user-times"></i> Remove'; removeBtn.className = 'btn btn-danger btn-sm remove-user-btn'; removeBtn.onclick = () => handleRemoveUser(user.username); li.appendChild(removeBtn); } else if (user.role === 'admin') { const adminLabel = document.createElement('span'); adminLabel.className = 'text-muted small'; adminLabel.textContent = '(Admin)'; adminLabel.style.marginLeft = '10px'; li.appendChild(adminLabel); } adminUsersList.appendChild(li); }); }
+    function handleRemoveUser(usernameToRemove) { /* ... same ... */ if (!confirm(`Are you sure you want to remove user "${usernameToRemove}"? This action cannot be undone.`)) return; let users = JSON.parse(localStorage.getItem('users')) || []; const userToRemove = users.find(u => u.username === usernameToRemove); if (!userToRemove) return showAlert(`User "${usernameToRemove}" not found.`, 'error'); if (userToRemove.role === 'admin') return showAlert(`Admin user "${usernameToRemove}" cannot be removed.`, 'warning'); users = users.filter(user => user.username !== usernameToRemove); localStorage.setItem('users', JSON.stringify(users)); let votedUsernames = JSON.parse(localStorage.getItem('votedUsers')) || []; votedUsernames = votedUsernames.filter(username => username !== usernameToRemove); localStorage.setItem('votedUsers', JSON.stringify(votedUsernames)); showAlert(`User "${usernameToRemove}" has been removed.`, 'success'); renderAdminUserList(); updateDashboardStats(); }
+
+    // --- NEW: ADMIN ALLOWED VOTERS MANAGEMENT ---
+    function renderAllowedVotersAdminList() {
+        if (!adminAllowedVotersList) return;
+        adminAllowedVotersList.innerHTML = '';
+        const allowed = JSON.parse(localStorage.getItem('allowedVotersList')) || [];
+        allowedVotersCountDisplay.textContent = allowed.length;
+
+        if (allowed.length === 0) {
+            adminAllowedVotersList.innerHTML = '<li>No voters pre-approved yet. Import a CSV.</li>';
+            return;
+        }
+        allowed.forEach(voterId => {
+            const li = document.createElement('li');
+            li.textContent = voterId;
+            adminAllowedVotersList.appendChild(li);
+        });
+    }
+
+    function handleImportAllowedVoters() {
+        const file = allowedVotersFileInput.files[0];
+        if (!file) {
+            showAlert('Please select a CSV file to import.', 'warning');
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            try {
+                const csvData = event.target.result;
+                // Split by lines, then filter out empty lines and trim whitespace
+                // Assumes one username/ID per line. Handles both CRLF and LF line endings.
+                const lines = csvData.split(/\r\n|\n/);
+                const importedVoters = lines
+                                        .map(line => line.trim()) // Trim whitespace from each line
+                                        .filter(line => line !== ''); // Filter out empty lines
+
+                if (importedVoters.length === 0) {
+                    showAlert('CSV file is empty or contains no valid usernames.', 'warning');
+                    return;
+                }
+
+                // Optional: Add to existing list or replace? For now, let's replace.
+                // If you want to add:
+                // const existingAllowed = JSON.parse(localStorage.getItem('allowedVotersList')) || [];
+                // const combined = [...new Set([...existingAllowed, ...importedVoters])]; // Use Set to ensure uniqueness
+                // localStorage.setItem('allowedVotersList', JSON.stringify(combined));
+
+                localStorage.setItem('allowedVotersList', JSON.stringify(importedVoters));
+                showAlert(`${importedVoters.length} voters imported successfully. Registration is now restricted to this list.`, 'success');
+                renderAllowedVotersAdminList();
+                updateDashboardStats();
+                allowedVotersFileInput.value = ''; // Reset file input
+            } catch (error) {
+                showAlert('Error processing CSV file. Please ensure it is a valid CSV with one username/ID per line.', 'error');
+                console.error("CSV Import Error: ", error);
+            }
+        };
+        reader.onerror = function() {
+            showAlert('Error reading the file.', 'error');
+        };
+        reader.readAsText(file);
+    }
+
+    function handleClearAllowedVotersList() {
+        if (confirm('Are you sure you want to clear the entire list of allowed voters? This will allow anyone to register (unless a new list is imported).')) {
+            localStorage.setItem('allowedVotersList', JSON.stringify([]));
+            showAlert('Allowed voters list has been cleared. Registration is no longer restricted by a pre-approved list.', 'info');
+            renderAllowedVotersAdminList();
+            updateDashboardStats();
+        }
+    }
+
+    // --- VOTING LOGIC (same, but with message change in setupVotingPanel) ---
+    //function setupVotingPanel() { /* ... same logic, just ensure messages are clear about eligibility ... */ if (!loggedInUser || loggedInUser.role !== 'voter') return; const currentElectionStatus = localStorage.getItem('electionStatus'); const votedUsers = JSON.parse(localStorage.getItem('votedUsers')); candidatesList.innerHTML = ''; voterResultsArea.classList.add('hidden'); voterResultsArea.innerHTML = ''; if (currentElectionStatus === ELECTION_STATUS.NOT_STARTED) { votingMessage.textContent = "The election has not started yet. Please check back later."; candidatesList.classList.add('hidden'); return; } if (votedUsers.includes(loggedInUser.username)) { if (currentElectionStatus === ELECTION_STATUS.ACTIVE) { votingMessage.innerHTML = `You have successfully cast your vote. <br>Thank you for your participation!`; candidatesList.classList.add('hidden'); voterResultsArea.classList.add('hidden'); } else if (currentElectionStatus === ELECTION_STATUS.ENDED) { votingMessage.textContent = "Election ended. You participated. Final results:"; candidatesList.classList.add('hidden'); displayVoterResults(); } return; } if (currentElectionStatus === ELECTION_STATUS.ACTIVE) { const electionCandidates = JSON.parse(localStorage.getItem('electionCandidates')) || []; if (electionCandidates.length === 0) { votingMessage.textContent = "No candidates are configured for this election."; candidatesList.classList.add('hidden'); } else { votingMessage.textContent = "Election active. Please select a candidate:"; electionCandidates.forEach(candidateName => { const li = document.createElement('li'); const button = document.createElement('button'); button.textContent = candidateName; button.addEventListener('click', () => confirmVote(candidateName)); li.appendChild(button); candidatesList.appendChild(li); }); candidatesList.classList.remove('hidden'); } } else if (currentElectionStatus === ELECTION_STATUS.ENDED) { votingMessage.textContent = "Election ended, you did not participate. Final results:"; candidatesList.classList.add('hidden'); displayVoterResults(); } }//
+        // --- VOTING LOGIC (MODIFIED setupVotingPanel) ---
+    function setupVotingPanel() {
+      if (!loggedInUser || loggedInUser.role !== 'voter') return;
+
+      const currentElectionStatus = localStorage.getItem('electionStatus');
+      const votedUsers = JSON.parse(localStorage.getItem('votedUsers'));
+      const allowedVoters = JSON.parse(localStorage.getItem('allowedVotersList')) || []; // Get the list
+
+      candidatesList.innerHTML = ''; 
+      voterResultsArea.classList.add('hidden'); 
+      voterResultsArea.innerHTML = ''; 
+
+      if (currentElectionStatus === ELECTION_STATUS.NOT_STARTED) {
+        votingMessage.textContent = "The election has not started yet. Please check back later.";
+        candidatesList.classList.add('hidden');
+        return;
+      }
+
+      // NEW CHECK: If an allowed list exists, ensure the current logged-in user is on it
+      // This applies even if they registered before the list was imported.
+      if (allowedVoters.length > 0 && !allowedVoters.includes(loggedInUser.username)) {
+          if (currentElectionStatus === ELECTION_STATUS.ACTIVE) {
+              votingMessage.textContent = "You are not on the list of eligible voters for this specific election. Please contact an administrator if you believe this is an error.";
+          } else if (currentElectionStatus === ELECTION_STATUS.ENDED) {
+              votingMessage.textContent = "This election was restricted to a specific list of voters, and your username was not on it. Here are the final results for those who were eligible:";
+              displayVoterResults(); // Still show results if election ended
+          }
+          candidatesList.classList.add('hidden');
+          voterResultsArea.classList.remove('hidden', currentElectionStatus !== ELECTION_STATUS.ENDED); // Hide results if active
+          return;
+      }
+      // END NEW CHECK
+
+      if (votedUsers.includes(loggedInUser.username)) {
+        // User has already voted (and was eligible or became eligible)
+        if (currentElectionStatus === ELECTION_STATUS.ACTIVE) {
+            votingMessage.innerHTML = `You have successfully cast your vote in this election. <br>Thank you for your participation!`;
+            // Results are not shown here while active as per previous requirement
+        } else if (currentElectionStatus === ELECTION_STATUS.ENDED) {
+            votingMessage.textContent = "The election has ended. You participated in this election. Here are the final results:";
+            displayVoterResults(); 
+        }
+        candidatesList.classList.add('hidden');
+        voterResultsArea.classList.toggle('hidden', currentElectionStatus === ELECTION_STATUS.ACTIVE); // Show if ended, hide if active
+        return;
+      }
+      
+      // If ELECTION_STATUS.ACTIVE, user has NOT voted yet, AND they passed the allowedVoters check (if applicable)
+      if (currentElectionStatus === ELECTION_STATUS.ACTIVE) {
+        const electionCandidates = JSON.parse(localStorage.getItem('electionCandidates')) || [];
+        if (electionCandidates.length === 0) {
+            votingMessage.textContent = "No candidates are configured for this election. Please contact an administrator.";
+            candidatesList.classList.add('hidden');
+        } else {
+            votingMessage.textContent = "The election is active. Please select a candidate to vote for:";
+            electionCandidates.forEach(candidateName => {
+              const li = document.createElement('li');
+              const button = document.createElement('button');
+              button.textContent = candidateName;
+              button.addEventListener('click', () => confirmVote(candidateName));
+              li.appendChild(button);
+              candidatesList.appendChild(li);
+            });
+            candidatesList.classList.remove('hidden');
+        }
+      } else if (currentElectionStatus === ELECTION_STATUS.ENDED) {
+        // User has not voted, election has ended, AND they passed the allowedVoters check (if applicable)
+        votingMessage.textContent = "The election has ended, and you did not participate (or were not eligible for this specific election). Here are the final results:";
+        candidatesList.classList.add('hidden');
+        displayVoterResults();
+      }
+    }
+    function displayVoterResults() { /* ... same ... */ const votes = JSON.parse(localStorage.getItem('votes')) || {}; const totalSystemVotes = Object.values(votes).reduce((sum, count) => sum + count, 0); let resultsText = ''; if (totalSystemVotes > 0) { resultsText += Object.entries(votes).sort(([,a],[,b]) => b-a).map(([candidate, count]) => `${candidate}: ${count} votes (${((count / totalSystemVotes) * 100).toFixed(1)}%)`).join('\n'); resultsText += `\n\nTotal votes cast: ${totalSystemVotes}`; } else { resultsText = 'No votes were recorded in this election.'; } voterResultsArea.innerText = resultsText; voterResultsArea.classList.remove('hidden'); }
+    function confirmVote(candidate) { /* ... same ... */ if (confirm(`Vote for ${candidate}? This action cannot be undone.`)) vote(candidate); }
+    function vote(candidate) { /* ... same ... */ const votes = JSON.parse(localStorage.getItem('votes')) || {}; votes[candidate] = (votes[candidate] || 0) + 1; localStorage.setItem('votes', JSON.stringify(votes)); const votedUsers = JSON.parse(localStorage.getItem('votedUsers')) || []; votedUsers.push(loggedInUser.username); localStorage.setItem('votedUsers', JSON.stringify(votedUsers)); showAlert(`Thank you for casting your vote for ${candidate}!`, 'success'); updateDashboardStats(); setupVotingPanel();  }
+
+    // --- ADMIN RESULTS LOGIC (same) ---
+    function refreshResults() { /* ... same ... */ if (!resultsDisplayArea) return; const votes = JSON.parse(localStorage.getItem('votes')) || {}; const totalCandidateVotes = Object.values(votes).reduce((sum, count) => sum + count, 0); let resultsText = ''; if (totalCandidateVotes > 0) { resultsText = Object.entries(votes).sort(([,a],[,b]) => b-a) .map(([candidate, count]) => `${candidate}: ${count} votes (${((count / totalCandidateVotes) * 100).toFixed(1)}%)`).join('\n'); resultsText += `\n\nTotal votes for candidates: ${totalCandidateVotes}`; } else { resultsText = 'No votes recorded for candidates.'; } resultsDisplayArea.innerText = resultsText; }
+    
+    // --- UTILITY: ALERT FUNCTION (same) ---
+    function showAlert(message, type = 'info') { /* ... same ... */ const alertElement = document.createElement('div'); alertElement.style.position = 'fixed'; alertElement.style.top = '20px'; alertElement.style.right = '20px';  alertElement.style.transform = 'none'; alertElement.style.left = 'auto'; alertElement.style.padding = '12px 20px'; alertElement.style.borderRadius = '5px'; alertElement.style.zIndex = '2000'; alertElement.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)'; if (type === 'error') alertElement.className = 'alert alert-error'; else if (type === 'success') alertElement.className = 'alert alert-success'; else alertElement.className = 'alert alert-info'; alertElement.style.borderLeftWidth = '4px'; alertElement.style.marginBottom = '0'; alertElement.appendChild(document.createTextNode(message)); document.body.appendChild(alertElement); setTimeout(() => { alertElement.style.opacity = '0'; alertElement.style.transition = 'opacity 0.5s ease-out'; setTimeout(() => { if (document.body.contains(alertElement)) document.body.removeChild(alertElement); }, 500); }, 3500); }
+  </script>
+</body>
+</html>

@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+      <link rel="stylesheet" href="abc.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Voting System</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    
+    body {
+      background-color: #f5f5f5;
+      line-height: 1.6;
+      padding-bottom: 50px;
+    }
+    
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    
+    header {
+      background-color: #2c3e50;
+      color: white;
+      padding: 1rem 0;
+      text-align: center;
+      margin-bottom: 30px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    
+    h1 {
+      font-size: 2.2rem;
+    }
+    
+    h2 {
+      margin-bottom: 20px;
+      color: #2c3e50;
+      border-bottom: 2px solid #3498db;
+      padding-bottom: 10px;
+    }
+    
+    .card {
+      background: white;
+      border-radius: 8px;
+      padding: 25px;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    
+    .form-group {
+      margin-bottom: 15px;
+    }
+    
+    label {
+      display: block;
+      font-weight: bold;
+      margin-bottom: 5px;
+      color: #333;
+    }
+    
+    input[type="text"], 
+    input[type="password"] {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 16px;
+    }
+    
+    .btn {
+      display: inline-block;
+      background: #3498db;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      margin: 5px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 16px;
+      transition: background 0.3s;
+    }
+    
+    .btn:hover {
+      background: #2980b9;
+    }
+    
+    .btn-danger {
+      background: #e74c3c;
+    }
+    
+    .btn-danger:hover {
+      background: #c0392b;
+    }
+    
+    .btn-success {
+      background: #2ecc71;
+    }
+    
+    .btn-success:hover {
+      background: #27ae60;
+    }
+    
+    .hidden {
+      display: none;
+    }
+    
+    ul {
+      list-style: none;
+    }
+    
+    #candidates-list li {
+      margin-bottom: 10px;
+    }
+    
+    #candidates-list button {
+      width: 100%;
+      text-align: left;
+      padding: 15px;
+      font-size: 18px;
+      border: 1px solid #ddd;
+      background: white;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    #candidates-list button:hover {
+      background: #f9f9f9;
+      border-color: #3498db;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    
+    #results {
+      white-space: pre-line;
+      background: #f9f9f9;
+      padding: 15px;
+      border-radius: 5px;
+      border-left: 4px solid #3498db;
+      font-family: monospace;
+      margin-top: 20px;
+      font-size: 16px;
+    }
+    
+    .text-center {
+      text-align: center;
+    }
+    
+    .button-group {
+      margin-top: 15px;
+    }
+    
+    .logout-btn {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      background: transparent;
+      color: white;
+      border: 1px solid white;
+      padding: 5px 10px;
+      cursor: pointer;
+      border-radius: 4px;
+      font-size: 14px;
+      display: none;
+    }
+    
+    .logout-btn:hover {
+      background: rgba(255,255,255,0.1);
+    }
+    
+    .user-info {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      color: white;
+      font-size: 14px;
+      display: none;
+    }
+  </style> 
+</head>
+<body>
+  <header>
+    <h1>Secure Voting System</h1>
+    <div id="user-info" class="user-info">
+      Logged in as: <span id="current-user">Guest</span>
+    </div>
+    <button id="logout-btn" class="logout-btn">Logout</button>
+  </header>
+
+  <div class="container">
+    <!-- Login & Registration Section -->
+    <div id="login-section" class="card">
+      <h2>Login or Register</h2>
+      <div class="form-group">
+        <label for="username">Username:</label>
+        <input type="text" id="username" placeholder="Enter your username">
+      </div>
+      <div class="form-group">
+        <label for="password">Password:</label>
+        <input type="password" id="password" placeholder="Enter your password">
+      </div>
+      <div class="button-group">
+        <button id="login-btn" class="btn">Login</button>
+        <button id="register-btn" class="btn">Register</button>
+      </div>
+    </div>
+
+    <!-- Admin Section -->
+    <div id="admin-section" class="card hidden">
+      <h2>Admin Control Panel</h2>
+      <p>View and manage voting results:</p>
+      <div id="results">Results will appear here...</div>
+      <div class="button-group">
+        <button id="refresh-results-btn" class="btn">Refresh Results</button>
+        <button id="reset-results-btn" class="btn btn-danger">Reset All Votes</button>
+      </div>
+    </div>
+
+    <!-- Voting Section -->
+    <div id="voting-section" class="card hidden">
+      <h2>Voting Panel</h2>
+      <p id="voting-message">Select a candidate to vote for:</p>
+      <ul id="candidates-list" class="hidden">
+        <!-- Candidate voting buttons will be inserted here -->
+      </ul>
+    </div>
+  </div>
+
+  <script>
+    // Initialize the simulated database in localStorage
+    if (!localStorage.getItem('users')) {
+      localStorage.setItem(
+        'users',
+        JSON.stringify([{ username: 'admin', password: 'admin123', role: 'admin' }]) // Predefined admin
+      );
+    }
+    if (!localStorage.getItem('votes')) {
+      localStorage.setItem('votes', JSON.stringify({})); // Empty votes object
+    }
+    if (!localStorage.getItem('votedUsers')) {
+      localStorage.setItem('votedUsers', JSON.stringify([])); // Tracks users who have voted
+    }
+
+    let loggedInUser = null;
+
+    // Event listeners for login and register
+    document.getElementById('login-btn').addEventListener('click', login);
+    document.getElementById('register-btn').addEventListener('click', register);
+    document.getElementById('logout-btn').addEventListener('click', logout);
+
+    // Check if user is already logged in (simulated session)
+    const savedUser = sessionStorage.getItem('loggedInUser');
+    if (savedUser) {
+      loggedInUser = JSON.parse(savedUser);
+      updateUI();
+    }
+
+    function register() {
+      const username = document.getElementById('username').value.trim();
+      const password = document.getElementById('password').value;
+
+      if (!username || !password) {
+        showAlert('Please fill in both fields!', 'error');
+        return;
+      }
+
+      if (username.length < 3) {
+        showAlert('Username must be at least 3 characters long', 'error');
+        return;
+      }
+
+      if (password.length < 6) {
+        showAlert('Password must be at least 6 characters long', 'error');
+        return;
+      }
+
+      const users = JSON.parse(localStorage.getItem('users'));
+      const existingUser = users.find(user => user.username === username);
+
+      if (existingUser) {
+        showAlert('Username already exists. Please log in.', 'error');
+      } else {
+        const user = { username, password, role: 'voter' }; // Default role is 'voter'
+        users.push(user);
+        localStorage.setItem('users', JSON.stringify(users));
+        showAlert('Registration successful! Please log in.', 'success');
+        // Clear input fields
+        document.getElementById('username').value = '';
+        document.getElementById('password').value = '';
+      }
+    }
+
+    function login() {
+      const username = document.getElementById('username').value.trim();
+      const password = document.getElementById('password').value;
+
+      if (!username || !password) {
+        showAlert('Please fill in both fields!', 'error');
+        return;
+      }
+
+      const users = JSON.parse(localStorage.getItem('users'));
+      loggedInUser = users.find(user => user.username === username && user.password === password);
+
+      if (loggedInUser) {
+        // Save user to session storage for persistent login
+        sessionStorage.setItem('loggedInUser', JSON.stringify(loggedInUser));
+        showAlert(`Welcome, ${loggedInUser.username}!`, 'success');
+        updateUI();
+      } else {
+        showAlert('Invalid credentials!', 'error');
+      }
+    }
+
+    function logout() {
+      // Clear the stored user
+      sessionStorage.removeItem('loggedInUser');
+      loggedInUser = null;
+      // Reload page to reset UI
+      location.reload();
+    }
+
+    function updateUI() {
+      // Update user info and show logout button
+      document.getElementById('current-user').textContent = loggedInUser.username;
+      document.getElementById('user-info').style.display = 'block';
+      document.getElementById('logout-btn').style.display = 'block';
+
+      // Hide login section
+      document.getElementById('login-section').classList.add('hidden');
+
+      if (loggedInUser.role === 'admin') {
+        // Show admin panel
+        document.getElementById('admin-section').classList.remove('hidden');
+
+        // Initialize results display
+        refreshResults();
+
+        // Add event listeners for admin actions
+        document.getElementById('refresh-results-btn').addEventListener('click', refreshResults);
+        document.getElementById('reset-results-btn').addEventListener('click', confirmResetResults);
+      } else if (loggedInUser.role === 'voter') {
+        // Check if the voter has already voted
+        const votedUsers = JSON.parse(localStorage.getItem('votedUsers'));
+        if (votedUsers.includes(loggedInUser.username)) {
+          document.getElementById('voting-section').innerHTML = `
+            <h2>Voting Panel</h2>
+            <p class="text-center">You have already voted. Thank you for participating!</p>
+            <div id="results" class="text-center">Loading your vote...</div>
+          `;
+          // Show what they voted for
+          const votes = JSON.parse(localStorage.getItem('votes')) || {};
+          const resultsDisplay = Object.entries(votes)
+            .map(([candidate, count]) => `${candidate}: ${count} votes`)
+            .join('\n');
+          document.getElementById('results').innerText = resultsDisplay || 'Results: No votes yet.';
+        } else {
+          // Show candidates list for first-time voters
+          document.getElementById('voting-message').innerText = "Select a candidate to vote for:";
+          document.getElementById('candidates-list').innerHTML = `
+            <li><button id="vote-candidate-1" class="vote-btn">Candidate 1</button></li>
+            <li><button id="vote-candidate-2" class="vote-btn">Candidate 2</button></li>
+            <li><button id="vote-candidate-3" class="vote-btn">Candidate 3</button></li>
+          `;
+          document.getElementById('candidates-list').classList.remove('hidden');
+
+          // Add event listeners for voting buttons
+          document.getElementById('vote-candidate-1').addEventListener('click', () => confirmVote('Candidate 1'));
+          document.getElementById('vote-candidate-2').addEventListener('click', () => confirmVote('Candidate 2'));
+          document.getElementById('vote-candidate-3').addEventListener('click', () => confirmVote('Candidate 3'));
+        }
+
+        // Show the voting section
+        document.getElementById('voting-section').classList.remove('hidden');
+      }
+    }
+
+    function confirmVote(candidate) {
+      if (confirm(`Are you sure you want to vote for ${candidate}? This action cannot be undone.`)) {
+        vote(candidate);
+      }
+    }
+
+    function vote(candidate) {
+      const votes = JSON.parse(localStorage.getItem('votes')) || {};
+
+      // Increment the vote count for the selected candidate
+      if (votes[candidate]) {
+        votes[candidate]++;
+      } else {
+        votes[candidate] = 1;
+      }
+
+      // Add user to votedUsers list to track that they have voted
+      const votedUsers = JSON.parse(localStorage.getItem('votedUsers')) || [];
+      votedUsers.push(loggedInUser.username);
+      localStorage.setItem('votedUsers', JSON.stringify(votedUsers));
+
+      // Save votes back to localStorage
+      localStorage.setItem('votes', JSON.stringify(votes));
+
+      showAlert(`Thank you for voting for ${candidate}!`, 'success');
+      setTimeout(() => {
+        location.reload(); // Refresh the page after a short delay
+      }, 1500);
+    }
+
+    function refreshResults() {
+      const votes = JSON.parse(localStorage.getItem('votes')) || {};
+      const totalVotes = Object.values(votes).reduce((sum, count) => sum + count, 0);
+      
+      let resultsDisplay = '';
+      if (totalVotes > 0) {
+        resultsDisplay = Object.entries(votes)
+          .map(([candidate, count]) => {
+            const percentage = ((count / totalVotes) * 100).toFixed(1);
+            return `${candidate}: ${count} votes (${percentage}%)`;
+          })
+          .join('\n');
+        resultsDisplay += `\n\nTotal votes: ${totalVotes}`;
+      } else {
+        resultsDisplay = 'No votes recorded yet.';
+      }
+
+      document.getElementById('results').innerText = resultsDisplay;
+    }
+
+    function confirmResetResults() {
+      if (confirm('Are you sure you want to reset all voting results? This action cannot be undone.')) {
+        resetResults();
+      }
+    }
+
+    function resetResults() {
+      // Clear votes and voted users from localStorage
+      localStorage.setItem('votes', JSON.stringify({})); // Reset votes to an empty object
+      localStorage.setItem('votedUsers', JSON.stringify([])); // Reset voted users to an empty list
+
+      // Update the admin results display
+      document.getElementById('results').innerText = 'Results have been reset.';
+      showAlert('All voting results have been cleared!', 'success');
+    }
+
+    // Custom alert function
+    function showAlert(message, type = 'info') {
+      // Create alert element
+      const alertElement = document.createElement('div');
+      alertElement.style.position = 'fixed';
+      alertElement.style.top = '20px';
+      alertElement.style.left = '50%';
+      alertElement.style.transform = 'translateX(-50%)';
+      alertElement.style.padding = '10px 20px';
+      alertElement.style.borderRadius = '5px';
+      alertElement.style.zIndex = '1000';
+      alertElement.style.boxShadow = '0 4px 8px rgba(0,0,0,0.1)';
+      alertElement.textContent = message;
+      
+      // Set color based on type
+      if (type === 'error') {
+        alertElement.style.backgroundColor = '#e74c3c';
+        alertElement.style.color = 'white';
+      } else if (type === 'success') {
+        alertElement.style.backgroundColor = '#2ecc71';
+        alertElement.style.color = 'white';
+      } else {
+        alertElement.style.backgroundColor = '#3498db';
+        alertElement.style.color = 'white';
+      }
+      
+      // Add to body
+      document.body.appendChild(alertElement);
+      
+      // Remove after a delay
+      setTimeout(() => {
+        alertElement.style.opacity = '0';
+        alertElement.style.transition = 'opacity 0.5s';
+        setTimeout(() => {
+          document.body.removeChild(alertElement);
+        }, 500);
+      }, 3000);
+    }
+  </script>
+</body>
+</html>
